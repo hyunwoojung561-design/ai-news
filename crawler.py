@@ -105,7 +105,7 @@ def send_to_slack(webhook_url, economy_news, tech_news):
     economy_text = ""
     if economy_news:
         for idx, news in enumerate(economy_news, 1):
-            economy_text += f"{idx}. *<{news['link']}|{news['title']}>*\n"
+            economy_text += f"{idx}. *{news['title']}*\n   • 링크: {news['link']}\n"
     else:
         economy_text = "가져온 경제 뉴스가 없습니다."
         
@@ -125,7 +125,7 @@ def send_to_slack(webhook_url, economy_news, tech_news):
     tech_text = ""
     if tech_news:
         for idx, news in enumerate(tech_news, 1):
-            tech_text += f"{idx}. *<{news['link']}|{news['title']}>*\n"
+            tech_text += f"{idx}. *{news['title']}*\n   • 링크: {news['link']}\n"
     else:
         tech_text = "가져온 테크 뉴스가 없습니다."
         
