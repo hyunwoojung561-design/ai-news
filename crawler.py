@@ -78,6 +78,71 @@ def get_yahoo_finance_news(url, category_name, count=3):
         
     return news_list
 
+def get_yahoo_rss_news(url, category_name, count=3):
+    """
+    야후 뉴스 RSS 피드에서 뉴스 제목과 링크를 가져옵니다.
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    }
+    
+    from bs4 import XMLParsedAsHTMLWarning
+    import warnings
+    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+    
+    news_list = []
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"[{category_name}] RSS 로드 실패 (Status: {response.status_code})")
+            return []
+            
+        soup = BeautifulSoup(response.text, 'html.parser')
+        items = soup.find_all('item')
+        
+        for item in items:
+            title_tag = item.find('title')
+            if not title_tag:
+                continue
+            title = title_tag.get_text().strip()
+            if not title:
+                continue
+                
+            link_tag = item.find('link')
+            link = ''
+            if link_tag and link_tag.next_sibling:
+                link = link_tag.next_sibling.strip()
+                
+            if not link:
+                guid_tag = item.find('guid')
+                if guid_tag:
+                    link = guid_tag.get_text().strip()
+                    
+            if not link:
+                continue
+                
+            if link.startswith('/'):
+                link = f"https://finance.yahoo.com{link}"
+            elif not link.startswith('http'):
+                link = f"https://finance.yahoo.com/{link}"
+                
+            if any(elem['link'] == link for elem in news_list):
+                continue
+                
+            news_list.append({
+                'title': title,
+                'link': link
+            })
+            
+            if len(news_list) >= count:
+                break
+                
+    except Exception as e:
+        print(f"[{category_name}] RSS 크롤링 중 오류 발생: {e}")
+        
+    return news_list
+
 def send_to_slack(webhook_url, economy_news, tech_news):
     """
     정리된 뉴스를 슬랙 웹훅으로 전송합니다.
@@ -168,9 +233,9 @@ def main():
     economy_url = "https://finance.yahoo.com/topic/economic-news/"
     economy_news = get_yahoo_finance_news(economy_url, "미국 경제", count=3)
     
-    # 2. AI 및 테크 뉴스 3개 가져오기
-    tech_url = "https://finance.yahoo.com/topic/tech/"
-    tech_news = get_yahoo_finance_news(tech_url, "AI/테크", count=3)
+    # 2. AI 및 테크 뉴스 3개 가져오기 (실시간 갱신을 위해 RSS 피드 사용)
+    tech_url = "https://news.yahoo.com/rss/tech"
+    tech_news = get_yahoo_rss_news(tech_url, "AI/테크", count=3)
     
     # 결과 출력
     print(f"\n[미국 매크로 경제 뉴스 ({len(economy_news)}개)]")
